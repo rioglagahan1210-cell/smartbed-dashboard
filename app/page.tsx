@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { ShieldAlert, AlertTriangle, CheckCircle, Activity, Award, User, GraduationCap } from 'lucide-react';
 
-// Inisialisasi Supabase Client dengan fallback aman saat Build Time
+// Inisialisasi Supabase Client dengan Fallback Aman saat Build Time
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -20,34 +20,55 @@ interface BedLog {
 export default function Home() {
   const [latestLog, setLatestLog] = useState<BedLog | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [debugMsg, setDebugMsg] = useState('Menginisialisasi koneksi...');
 
-useEffect(() => {
-  console.log("1. Menghubungkan ke Supabase...");
-  console.log("URL Supabase:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-
-    // 1. Ambil data terakhir saat web dibuka
+  useEffect(() => {
+    // 1. Fungsi Ambil Data Terakhir
     const fetchLatestData = async () => {
-      const { data } = await supabase
-        .from('bed_logs')
-        .select('*')
-        .order('id', { ascending: false })
-        .limit(1);
+      try {
+        console.log('[DEBUG] Mengambil data dari Supabase...');
+        const { data, error } = await supabase
+          .from('bed_logs')
+          .select('*')
+          .order('id', { ascending: false })
+          .limit(1);
 
-      if (data && data.length > 0) {
-        setLatestLog(data[0]);
-        setIsConnected(true);
+        if (error) {
+          console.error('[ERROR Supabase]:', error.message);
+          setDebugMsg(`Error Supabase: ${error.message}`);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          console.log('[DEBUG] Data berhasil diambil:', data[0]);
+          setLatestLog(data[0]);
+          setIsConnected(true);
+          setDebugMsg('Data Berhasil Terhubung');
+        } else {
+          console.warn('[DEBUG] Tabel bed_logs kosong!');
+          setDebugMsg('Tabel bed_logs di Supabase masih kosong');
+        }
+      } catch (err: any) {
+        console.error('[CRITICAL ERROR]:', err);
+        setDebugMsg(`Crash: ${err.message || 'Gagal koneksi'}`);
       }
     };
 
     fetchLatestData();
 
-    // 2. Subskripsi Realtime Websocket Supabase
+    // 2. Fallback Polling Setiap 3 Detik (Memastikan data selalu up-to-date)
+    const interval = setInterval(() => {
+      fetchLatestData();
+    }, 3000);
+
+    // 3. Subskripsi Realtime Websocket
     const channel = supabase
       .channel('bed_logs_realtime')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'bed_logs' },
         (payload) => {
+          console.log('[DEBUG Realtime New Data]:', payload.new);
           setLatestLog(payload.new as BedLog);
           setIsConnected(true);
         }
@@ -55,13 +76,13 @@ useEffect(() => {
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, []);
 
   const risk = latestLog?.fall_risk || 0;
 
-  // Penentuan Warna & Status UI
   let statusColor = 'bg-emerald-500 text-white';
   let Icon = CheckCircle;
 
@@ -97,7 +118,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Panel Identitas Inovator / Pencipta Project */}
+        {/* Panel Identitas Pencipta Project */}
         <div className="bg-gradient-to-r from-cyan-950/40 via-slate-800/60 to-slate-800/40 border border-cyan-500/30 p-5 rounded-2xl shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="bg-cyan-500/10 p-3 rounded-xl border border-cyan-500/20">
@@ -125,7 +146,7 @@ useEffect(() => {
               <div>
                 <span className="text-xs uppercase font-bold tracking-wider opacity-80">Status Posisi Pasien</span>
                 <h2 className="text-3xl md:text-4xl font-black mt-1 tracking-tight">
-                  {latestLog?.status_patient || 'Menunggu Data...'}
+                  {latestLog?.status_patient || debugMsg}
                 </h2>
               </div>
               <Icon size={52} className="drop-shadow-md" />
@@ -145,7 +166,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Panel Spesifikasi Telemetri */}
+          {/* Panel Spesifikasi Hardware */}
           <div className="bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl flex flex-col justify-between">
             <div>
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Informasi Hardware & Telemetri</h3>
@@ -177,7 +198,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Visualisasi Matriks 8 Sensor */}
+        {/* Matriks 8 Sensor */}
         <div className="bg-slate-800/40 border border-slate-700/50 p-6 rounded-2xl">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
             Matriks Pembacaan Jarak 8 Sensor ToF (cm)
