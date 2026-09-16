@@ -21,9 +21,9 @@ export default function Home() {
   const [latestLog, setLatestLog] = useState<BedLog | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  useEffect(() => {
-    // Jalankan query hanya jika URL Supabase asli sudah dimuat
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
+useEffect(() => {
+  console.log("1. Menghubungkan ke Supabase...");
+  console.log("URL Supabase:", process.env.NEXT_PUBLIC_SUPABASE_URL);
 
     // 1. Ambil data terakhir saat web dibuka
     const fetchLatestData = async () => {
