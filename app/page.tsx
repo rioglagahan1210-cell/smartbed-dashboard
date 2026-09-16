@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { ShieldAlert, AlertTriangle, CheckCircle, Activity, Award, User, GraduationCap } from 'lucide-react';
 
-// Inisialisasi Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Inisialisasi Supabase Client dengan fallback aman saat Build Time
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface BedLog {
@@ -22,6 +22,9 @@ export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
+    // Jalankan query hanya jika URL Supabase asli sudah dimuat
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
+
     // 1. Ambil data terakhir saat web dibuka
     const fetchLatestData = async () => {
       const { data } = await supabase
